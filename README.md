@@ -1,52 +1,62 @@
-# Spam Email Detection - MLOps Starter
+# Spam Email Detection - MLOps POC
 
-This project is a practical MLOps starter for spam detection using your dataset `spam_ham_dataset.csv`.
+This project trains a text classifier for email categorization, logs experiments in MLflow, and serves predictions through a FastAPI endpoint.
+
+## What This Project Does
+
+1. Reads and prepares the dataset from `spam_ham_dataset.csv`.
+2. Trains a scikit-learn pipeline (`TF-IDF + LogisticRegression`).
+3. Computes evaluation metrics and saves them to `artifacts/metrics.json`.
+4. Saves the trained model to `models/spam_classifier.joblib`.
+5. Logs runs, params, and metrics to MLflow (`mlruns/`).
+6. Serves real-time predictions with FastAPI + Uvicorn.
 
 ## Project Structure
 
-- `src/business_problem/` - Problem definition artifacts
-- `src/data_collection/` - Data source and ingestion notes/code
-- `src/data_preparation/data_pipeline.py` - Dataset loading, column detection, split
-- `src/feature_engineering/` - Feature logic notes/code
-- `src/model_training/train.py` - Train model and log experiments with MLflow
-- `src/model_evaluation/` - Evaluation reports/code
-- `src/deployment/predict.py` - Predict spam/ham for new text
-- `src/monitoring/` - Monitoring notes/code
-- `models/` - Saved model artifacts
-- `artifacts/` - Metrics and generated outputs
-- `mlruns/` - MLflow local tracking store
-- `params.yaml` - Training defaults
+- `src/data_preparation/data_pipeline.py`: Data loading, column detection, balancing, split.
+- `src/model_training/train.py`: Training entrypoint and MLflow logging.
+- `src/deployment/predict.py`: CLI prediction entrypoint.
+- `src/deployment/api.py`: FastAPI real-time inference service.
+- `models/`: Saved model artifact (`.joblib`).
+- `artifacts/`: Generated metrics JSON.
+- `mlruns/`: MLflow tracking files.
+- `tests/`: Test suite.
 
-## 1) Create environment (Windows PowerShell)
+## Prerequisites
+
+- Windows PowerShell
+- Python 3.13 (recommended in this setup)
+
+## Setup
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-## 2) Train model
+## Train Model
 
 ```powershell
 python -m src.model_training.train
 ```
 
-Optional custom params:
+Optional hyperparameters:
 
 ```powershell
 python -m src.model_training.train --test-size 0.2 --random-state 42 --max-features 5000 --c 1.0
 ```
 
-## 3) Predict new message
+## Run CLI Prediction
 
 ```powershell
 python -m src.deployment.predict --text "Congratulations! You won a free iPhone. Click now!"
 ```
 
-## 4) Run real-time API (POC)
+## Run API (POC)
 
-Start the API server:
+Start server:
 
 ```powershell
 python -m uvicorn src.deployment.api:app --host 127.0.0.1 --port 8000 --reload
@@ -58,52 +68,45 @@ Health check:
 Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/health"
 ```
 
-Prediction request:
+Prediction:
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/predict" -ContentType "application/json" -Body '{"text":"Free money waiting for you. Click now."}'
 ```
 
-## 5) Track experiments in MLflow
+## MLflow Tracking
+
+Start MLflow UI using the same backend path used by training:
 
 ```powershell
 python -m mlflow ui --backend-store-uri "file:///D:/My%20Learning/MlOps-Projects/Detecting%20Spam%20Emails/mlruns" --host 127.0.0.1 --port 5000
 ```
 
-Then open: http://127.0.0.1:5000
+Open in browser:
 
-## Suggested MLOps Next Steps
+- http://127.0.0.1:5000
 
-1. Add `dvc` for data and model versioning.
-2. Add unit tests for preprocessing and prediction.
-3. Add CI pipeline (GitHub Actions) for training checks.
-4. Containerize with Docker for reproducible deployment.
-5. Expose prediction API with FastAPI.
+## Notes
 
-## GitHub Actions Pipeline (Production-Oriented)
+- If your dataset has more than two classes, training supports multiclass metrics automatically.
+- The MLflow filesystem deprecation message is a warning, not a training failure.
+- The model artifact extension is `.joblib` because training uses `joblib.dump`.
 
-This repo now includes CI/CD workflows:
+## Troubleshooting
 
-- `.github/workflows/ci.yml`
-	- Runs on every push and pull request to `main`/`master`
-	- Performs Python compile checks
-	- Runs unit tests
-	- Trains model and uploads artifacts (`trained-model`, `training-metrics`)
-
-- `.github/workflows/release.yml`
-	- Runs on tag pushes like `v1.0.0` or manual trigger (`workflow_dispatch`)
-	- Trains model
-	- Builds and pushes Docker image to GHCR:
-		- `ghcr.io/<owner>/spam-email-api:<tag>`
-
-### How to trigger release
-
-1. Commit and push changes to GitHub.
-2. Create a tag and push it:
+If `mlflow` module is missing:
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Or trigger manually from the GitHub Actions UI using `Release API Image`.
+If API cannot find model:
+
+1. Run training first.
+2. Confirm `models/spam_classifier.joblib` exists.
+
+If PowerShell blocks activation:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
